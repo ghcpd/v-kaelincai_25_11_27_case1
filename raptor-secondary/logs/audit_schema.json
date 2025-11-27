@@ -1,0 +1,36 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Appointment Audit Log Schema",
+  "type": "object",
+  "properties": {
+    "timestamp": {"type": "string", "format": "date-time"},
+    "level": {"type": "string", "enum": ["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]},
+    "logger": {"type": "string"},
+    "message": {"type": "string"},
+    "event": {"type": "string"},
+    "request_id": {"type": "string"},
+    "appointment_id": {"type": "string"},
+    "slot_id": {"type": "string"},
+    "state": {"type": "string"},
+    "error_code": {"type": ["string", "null"]},
+    "error_detail": {"type": ["string", "null"]},
+    "retry_count": {"type": ["integer", "null"]},
+    "latency_ms": {"type": ["number", "null"]},
+    "patient_name": {"type": "string", "description": "REDACTED"}
+  },
+  "required": ["timestamp", "level", "message", "request_id"],
+  "additionalProperties": true,
+  "example": {
+    "timestamp": "2025-11-27T12:34:56.789Z",
+    "level": "INFO",
+    "logger": "appointment",
+    "message": "appointment_confirmed",
+    "event": "appointment_confirmed",
+    "request_id": "req-success-1",
+    "appointment_id": "c0ffee-...",
+    "slot_id": "slot-123",
+    "state": "CONFIRMED",
+    "retry_count": 1,
+    "latency_ms": 234.5
+  }
+}
