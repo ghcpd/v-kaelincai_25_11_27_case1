@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Appointment Booking</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 2rem; }
+    .log { white-space: pre-wrap; background: #f4f4f4; padding: 1rem; border-radius: 4px; }
+    .status-success { color: green; }
+    .status-failure { color: red; }
+    .status-in-progress { color: orange; }
+    label { display: block; margin-top: 0.5rem; }
+    input { width: 300px; }
+    button { margin-top: 1rem; padding: 0.5rem 1rem; }
+  </style>
+</head>
+<body>
+  <h1>Outpatient Appointment Booking</h1>
+  <form id="booking-form">
+    <label>Request ID (idempotency key):<br><input type="text" id="request_id"></label>
+    <label>Slot ID:<br><input type="text" id="slot_id" required></label>
+    <label>Patient Name:<br><input type="text" id="patient_name"></label>
+    <button type="submit">Confirm Appointment</button>
+  </form>
+
+  <h2>Status: <span id="status-text">init</span></h2>
+  <div class="log" id="log"></div>
+
+  <script>
+    const form = document.getElementById('booking-form');
+    const statusText = document.getElementById('status-text');
+    const logEl = document.getElementById('log');
+
+    function log(msg) {
+      logEl.textContent += `${new Date().toISOString()} - ${msg}\n`;
+    }
+
+    function setStatus(status) {
+      statusText.textContent = status;
+      statusText.className = '';
+      if (status === 'success') statusText.classList.add('status-success');
+      else if (status === 'failure') statusText.classList.add('status-failure');
+      else if (status === 'in-progress') statusText.classList.add('status-in-progress');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const request_id_input = document.getElementById('request_id');
+      const slot_id = document.getElementById('slot_id').value;
+      const patient_name = document.getElementById('patient_name').value;
+      let request_id = request_id_input.value.trim();
+      if (!request_id) {
+        request_id = crypto.randomUUID();
+        request_id_input.value = request_id;
+      }
+
+      setStatus('in-progress');
+      log(`Submitting request ${request_id} for slot ${slot_id}`);
+      try {
+        const resp = await fetch('http://localhost:8000/appointments/confirm', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ request_id, slot_id, patient_name })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          setStatus(data.status || 'success');
+          log(`Success: ${JSON.stringify(data)}`);
+        } else {
+          setStatus('failure');
+          log(`Failure (${resp.status}): ${JSON.stringify(data)}`);
+        }
+      } catch (err) {
+        setStatus('failure');
+        log(`Exception: ${err}`);
+      }
+    });
+  </script>
+</body>
+</html>

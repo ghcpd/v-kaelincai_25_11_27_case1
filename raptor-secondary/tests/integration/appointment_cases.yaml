@@ -1,0 +1,74 @@
+- name: normal_success
+  description: "Calendar succeeds; appointment confirmed"
+  request:
+    request_id: req-success-1
+    slot_id: slot-123
+    patient_name: Alice
+  behavior:
+    slot_id: slot-123
+    outcome: success
+  expected:
+    status_code: 200
+    status: success
+    state: CONFIRMED
+
+- name: calendar_timeout_no_booking
+  description: "Calendar times out; API returns 500 and slot remains available"
+  request:
+    request_id: req-timeout-1
+    slot_id: slot-456
+    patient_name: Bob
+  behavior:
+    slot_id: slot-456
+    outcome: timeout
+  expected:
+    status_code: 500
+    error_code: CALENDAR_TIMEOUT
+    slot_available: true
+
+- name: idempotent_retry_no_double_booking
+  description: "Second call with same request_id returns same appointment"
+  request:
+    request_id: req-idempotent-1
+    slot_id: slot-789
+    patient_name: Carol
+  behavior:
+    slot_id: slot-789
+    outcome: success
+  expected:
+    status_code: 200
+    status: success
+    state: CONFIRMED
+    idempotent: true
+
+- name: partial_success_triggers_compensation
+  description: "Calendar returns partial; compensation runs; slot available"
+  request:
+    request_id: req-partial-1
+    slot_id: slot-321
+    patient_name: Dave
+  behavior:
+    slot_id: slot-321
+    outcome: partial
+  expected:
+    status_code: 500
+    error_code: CALENDAR_EXCEPTION
+    slot_available: true
+    compensation_logged: true
+
+- name: audit_verification
+  description: "Logs contain structured entries for lifecycle events"
+  request:
+    request_id: req-audit-1
+    slot_id: slot-654
+    patient_name: Eve
+  behavior:
+    slot_id: slot-654
+    outcome: success
+  expected:
+    status_code: 200
+    status: success
+    logs_present:
+      - appointment_created
+      - calendar_sync
+      - appointment_confirmed

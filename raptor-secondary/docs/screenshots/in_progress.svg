@@ -1,0 +1,5 @@
+
+<svg width='640' height='360' xmlns='http://www.w3.org/2000/svg'>
+  <rect width='640' height='360' fill='#f5f5f5' />
+  <text x='40' y='60' font-family='Arial, sans-serif' font-size='20' fill='#000'><tspan x='40' dy='0'>Status: IN-PROGRESS</tspan><tspan x='40' dy='30'>Awaiting calendar...</tspan></text>
+</svg>
