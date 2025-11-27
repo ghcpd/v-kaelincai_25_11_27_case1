@@ -1,0 +1,302 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Appointment Booking Audit Log Schema",
+  "description": "Structured logging schema for appointment booking system with request ID correlation and PII redaction",
+  "type": "object",
+  "required": [
+    "timestamp",
+    "level",
+    "action",
+    "request_id"
+  ],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp with UTC timezone (e.g., 2025-11-27T10:23:45.123Z)",
+      "examples": [
+        "2025-11-27T10:23:45.123Z"
+      ]
+    },
+    "level": {
+      "type": "string",
+      "enum": [
+        "INFO",
+        "WARNING",
+        "ERROR"
+      ],
+      "description": "Log severity level"
+    },
+    "action": {
+      "type": "string",
+      "description": "The action or event being logged",
+      "examples": [
+        "request_received",
+        "state_transition",
+        "calendar_sync_start",
+        "calendar_sync_success",
+        "calendar_sync_failure",
+        "compensation_start",
+        "compensation_complete",
+        "idempotency_hit",
+        "circuit_breaker_open",
+        "retry_attempt",
+        "saga_complete",
+        "saga_error"
+      ]
+    },
+    "request_id": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128,
+      "description": "Unique request identifier for correlation (e.g., req-a1b2c3d4-e5f6-7890-abcd-ef1234567890)",
+      "examples": [
+        "req-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+      ]
+    },
+    "appointment_id": {
+      "type": "string",
+      "description": "Unique appointment identifier (e.g., apt-12345678)",
+      "examples": [
+        "apt-12345678"
+      ]
+    },
+    "state_from": {
+      "type": "string",
+      "description": "Previous state in state machine",
+      "enum": [
+        "initiated",
+        "in_progress",
+        "calendar_syncing",
+        "confirmed",
+        "failed",
+        "compensating",
+        "pending_retry",
+        "cancelled"
+      ]
+    },
+    "state_to": {
+      "type": "string",
+      "description": "New state in state machine",
+      "enum": [
+        "initiated",
+        "in_progress",
+        "calendar_syncing",
+        "confirmed",
+        "failed",
+        "compensating",
+        "pending_retry",
+        "cancelled"
+      ]
+    },
+    "duration_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Operation duration in milliseconds"
+    },
+    "error": {
+      "type": "string",
+      "description": "Error message if action failed"
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Additional context-specific data (PII will be redacted)",
+      "additionalProperties": true
+    },
+    "redacted_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "List of field names that were redacted for PII protection",
+      "examples": [
+        [
+          "patient_name",
+          "patient_dob"
+        ]
+      ]
+    }
+  },
+  "examples": [
+    {
+      "timestamp": "2025-11-27T10:23:45.123Z",
+      "level": "INFO",
+      "action": "request_received",
+      "request_id": "req-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "metadata": {
+        "patient_id": "P123",
+        "patient_name": "***REDACTED***",
+        "doctor_id": "D456",
+        "appointment_time": "2025-11-28T14:00:00Z"
+      },
+      "redacted_fields": [
+        "patient_name"
+      ]
+    },
+    {
+      "timestamp": "2025-11-27T10:23:45.234Z",
+      "level": "INFO",
+      "action": "state_transition",
+      "request_id": "req-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "appointment_id": "apt-12345678",
+      "state_from": null,
+      "state_to": "initiated"
+    },
+    {
+      "timestamp": "2025-11-27T10:23:45.345Z",
+      "level": "INFO",
+      "action": "state_transition",
+      "request_id": "req-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "appointment_id": "apt-12345678",
+      "state_from": "initiated",
+      "state_to": "in_progress"
+    },
+    {
+      "timestamp": "2025-11-27T10:23:45.456Z",
+      "level": "INFO",
+      "action": "calendar_sync_start",
+      "request_id": "req-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "appointment_id": "apt-12345678"
+    },
+    {
+      "timestamp": "2025-11-27T10:23:46.706Z",
+      "level": "INFO",
+      "action": "calendar_sync_success",
+      "request_id": "req-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "appointment_id": "apt-12345678",
+      "duration_ms": 1250,
+      "metadata": {
+        "calendar_event_id": "cal-evt-78901"
+      }
+    },
+    {
+      "timestamp": "2025-11-27T10:23:46.817Z",
+      "level": "INFO",
+      "action": "state_transition",
+      "request_id": "req-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "appointment_id": "apt-12345678",
+      "state_from": "calendar_syncing",
+      "state_to": "confirmed",
+      "metadata": {
+        "calendar_event_id": "cal-evt-78901"
+      }
+    },
+    {
+      "timestamp": "2025-11-27T10:23:46.928Z",
+      "level": "INFO",
+      "action": "saga_complete",
+      "request_id": "req-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "appointment_id": "apt-12345678",
+      "duration_ms": 1805,
+      "metadata": {
+        "status": "confirmed"
+      }
+    },
+    {
+      "timestamp": "2025-11-27T10:24:15.123Z",
+      "level": "INFO",
+      "action": "idempotency_hit",
+      "request_id": "req-a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "appointment_id": "apt-12345678"
+    },
+    {
+      "timestamp": "2025-11-27T10:25:30.456Z",
+      "level": "ERROR",
+      "action": "calendar_sync_failure",
+      "request_id": "req-b2c3d4e5-f6g7-8901-bcde-fg2345678901",
+      "appointment_id": "apt-87654321",
+      "error": "timeout",
+      "duration_ms": 10050
+    },
+    {
+      "timestamp": "2025-11-27T10:25:30.567Z",
+      "level": "WARNING",
+      "action": "compensation_start",
+      "request_id": "req-c3d4e5f6-g7h8-9012-cdef-gh3456789012",
+      "appointment_id": "apt-11223344",
+      "metadata": {
+        "reason": "CalendarServiceException"
+      }
+    },
+    {
+      "timestamp": "2025-11-27T10:25:30.678Z",
+      "level": "INFO",
+      "action": "compensation_complete",
+      "request_id": "req-c3d4e5f6-g7h8-9012-cdef-gh3456789012",
+      "appointment_id": "apt-11223344",
+      "metadata": {
+        "actions": [
+          "deleted_appointment_record"
+        ]
+      }
+    },
+    {
+      "timestamp": "2025-11-27T10:26:45.789Z",
+      "level": "ERROR",
+      "action": "circuit_breaker_open",
+      "request_id": "req-d4e5f6g7-h8i9-0123-defg-hi4567890123",
+      "metadata": {
+        "service": "calendar_service"
+      }
+    },
+    {
+      "timestamp": "2025-11-27T10:27:50.890Z",
+      "level": "WARNING",
+      "action": "retry_attempt",
+      "request_id": "req-e5f6g7h8-i9j0-1234-efgh-ij5678901234",
+      "appointment_id": "apt-55667788",
+      "metadata": {
+        "attempt": 2,
+        "max_attempts": 3
+      }
+    }
+  ],
+  "piiRedactionRules": {
+    "description": "Fields that contain PII and must be redacted",
+    "redactedFields": [
+      "patient_name",
+      "patient_dob",
+      "patient_phone",
+      "patient_email",
+      "patient_address",
+      "patient_ssn"
+    ],
+    "redactionPatterns": {
+      "patient_name": "***REDACTED***",
+      "patient_dob": "****-**-**",
+      "patient_phone": "****-****-{last4}",
+      "patient_email": "***REDACTED***",
+      "patient_address": "***REDACTED***",
+      "patient_ssn": "***-**-****"
+    }
+  },
+  "queryExamples": {
+    "description": "Common log query patterns for troubleshooting",
+    "queries": [
+      {
+        "description": "Find all events for a specific request",
+        "query": "jq 'select(.request_id == \"req-a1b2c3d4-e5f6-7890-abcd-ef1234567890\")' logs/audit.log"
+      },
+      {
+        "description": "Find all failed appointments",
+        "query": "jq 'select(.state_to == \"failed\")' logs/audit.log"
+      },
+      {
+        "description": "Find all calendar sync timeouts",
+        "query": "jq 'select(.action == \"calendar_sync_failure\" and .error == \"timeout\")' logs/audit.log"
+      },
+      {
+        "description": "Find all compensation events",
+        "query": "jq 'select(.action == \"compensation_start\" or .action == \"compensation_complete\")' logs/audit.log"
+      },
+      {
+        "description": "Find all idempotency cache hits",
+        "query": "jq 'select(.action == \"idempotency_hit\")' logs/audit.log"
+      },
+      {
+        "description": "Calculate average calendar sync duration",
+        "query": "jq -s '[.[] | select(.action == \"calendar_sync_success\") | .duration_ms] | add / length' logs/audit.log"
+      }
+    ]
+  }
+}

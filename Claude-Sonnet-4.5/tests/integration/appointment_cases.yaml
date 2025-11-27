@@ -1,0 +1,222 @@
+# Appointment Booking Integration Test Cases
+# Five core scenarios to validate the Reliable_Appointment_Booking_v2 system
+
+test_cases:
+  - id: TC001
+    name: "Happy Path - Normal Success"
+    description: "Calendar API responds successfully within timeout. All components work normally."
+    scenario: success
+    input:
+      request_id: "req-tc001-happy-path-12345"
+      patient_id: "P1001"
+      doctor_id: "D2001"
+      appointment_time: "2025-11-28T14:00:00Z"
+      patient_name: "John Doe"
+    calendar_behavior: success
+    expected_outcome:
+      status: confirmed
+      http_status_code: 200
+      has_appointment_id: true
+      has_calendar_event_id: true
+      state_transitions:
+        - initiated
+        - in_progress
+        - calendar_syncing
+        - confirmed
+      db_record_exists: true
+      db_status: confirmed
+      calendar_event_created: true
+    assertions:
+      - "Response status is 'confirmed'"
+      - "HTTP 200 OK returned"
+      - "Appointment ID is generated"
+      - "Calendar event ID is present"
+      - "DB record has status='confirmed'"
+      - "State transitions logged: initiated → in_progress → calendar_syncing → confirmed"
+      - "Audit logs contain all transitions"
+      - "PII (patient_name) is redacted in logs"
+      - "No compensation actions triggered"
+    metrics:
+      expected_duration_ms: 100-500
+      retry_count: 0
+      idempotency_hits: 0
+
+  - id: TC002
+    name: "Calendar Timeout → No HTTP 500"
+    description: "Calendar API times out after 10+ seconds. System should NOT return HTTP 500. Instead, return HTTP 202 (async processing) with no booking created yet."
+    scenario: timeout
+    input:
+      request_id: "req-tc002-timeout-67890"
+      patient_id: "P1002"
+      doctor_id: "D2002"
+      appointment_time: "2025-11-28T15:00:00Z"
+    calendar_behavior: timeout
+    expected_outcome:
+      status: in_progress
+      http_status_code: 202
+      has_appointment_id: true
+      has_calendar_event_id: false
+      state_transitions:
+        - initiated
+        - in_progress
+        - calendar_syncing
+        - pending_retry
+      db_record_exists: true
+      db_status: pending_retry
+      calendar_event_created: false
+    assertions:
+      - "Response status is 'in_progress'"
+      - "HTTP 202 Accepted returned (NOT 500)"
+      - "Appointment ID is generated"
+      - "Calendar event ID is NULL"
+      - "DB record has status='pending_retry'"
+      - "State transitions logged: initiated → in_progress → calendar_syncing → pending_retry"
+      - "Audit log shows calendar_sync_failure with error='timeout'"
+      - "poll_url field is present in response"
+      - "No HTTP 500 error"
+    metrics:
+      expected_duration_ms: 10000-12000
+      retry_count: 0
+      idempotency_hits: 0
+
+  - id: TC003
+    name: "Idempotent Retry - No Double Booking"
+    description: "Client retries same request with duplicate Request-ID. System should return cached response without creating duplicate appointment."
+    scenario: idempotent_retry
+    input:
+      request_id: "req-tc003-idempotent-abcde"
+      patient_id: "P1003"
+      doctor_id: "D2003"
+      appointment_time: "2025-11-28T16:00:00Z"
+    calendar_behavior: success
+    expected_outcome:
+      first_request:
+        status: confirmed
+        http_status_code: 200
+        has_appointment_id: true
+        creates_new_record: true
+      second_request:
+        status: confirmed
+        http_status_code: 200
+        has_appointment_id: true
+        idempotent: true
+        creates_new_record: false
+    assertions:
+      - "First request creates appointment"
+      - "First request returns HTTP 200 with appointment_id"
+      - "Second request with same request_id returns cached response"
+      - "Second request response has 'idempotent: true'"
+      - "Only ONE DB record created (no duplicate)"
+      - "Only ONE calendar event created"
+      - "Audit log shows idempotency_hit for second request"
+      - "Appointment IDs are identical for both requests"
+    metrics:
+      expected_duration_ms:
+        first_request: 100-500
+        second_request: 10-50
+      retry_count: 0
+      idempotency_hits: 1
+
+  - id: TC004
+    name: "Partial Success → Compensation"
+    description: "DB write succeeds but calendar returns 503 Service Unavailable. System should compensate by rolling back DB record and returning HTTP 503."
+    scenario: compensation
+    input:
+      request_id: "req-tc004-compensation-fghij"
+      patient_id: "P1004"
+      doctor_id: "D2004"
+      appointment_time: "2025-11-28T17:00:00Z"
+    calendar_behavior: service_unavailable
+    expected_outcome:
+      status: failed
+      http_status_code: 503
+      has_appointment_id: true
+      has_calendar_event_id: false
+      state_transitions:
+        - initiated
+        - in_progress
+        - calendar_syncing
+        - compensating
+        - failed
+      db_record_exists: false
+      db_status: null
+      calendar_event_created: false
+    assertions:
+      - "Response status is 'failed'"
+      - "HTTP 503 Service Unavailable returned"
+      - "Appointment ID is generated (then deleted)"
+      - "Calendar event ID is NULL"
+      - "DB record is DELETED (compensation)"
+      - "State transitions logged: initiated → in_progress → calendar_syncing → compensating → failed"
+      - "Audit log shows compensation_start with reason='CalendarServiceException'"
+      - "Audit log shows compensation_complete with actions=['deleted_appointment_record']"
+      - "retry_after field is present in response"
+      - "No orphaned DB records"
+    metrics:
+      expected_duration_ms: 100-500
+      retry_count: 3
+      compensation_actions: 1
+
+  - id: TC005
+    name: "Audit & Reconciliation Verification"
+    description: "Mix of successful and failed requests. Validate structured logging, PII redaction, and audit trail completeness."
+    scenario: audit_verification
+    input:
+      requests:
+        - request_id: "req-tc005-audit-01"
+          patient_id: "P1005"
+          patient_name: "Jane Smith"
+          patient_dob: "1985-03-15"
+          patient_phone: "555-123-4567"
+          doctor_id: "D2005"
+          appointment_time: "2025-11-28T18:00:00Z"
+          calendar_behavior: success
+        - request_id: "req-tc005-audit-02"
+          patient_id: "P1006"
+          patient_name: "Bob Johnson"
+          doctor_id: "D2006"
+          appointment_time: "2025-11-28T19:00:00Z"
+          calendar_behavior: rate_limited
+        - request_id: "req-tc005-audit-03"
+          patient_id: "P1007"
+          doctor_id: "D2007"
+          appointment_time: "2025-11-28T20:00:00Z"
+          calendar_behavior: success
+    calendar_behavior: mixed
+    expected_outcome:
+      total_requests: 3
+      successful_requests: 2
+      failed_requests: 1
+    assertions:
+      - "All logs are in JSON format"
+      - "Each log entry has 'timestamp' field (ISO 8601)"
+      - "Each log entry has 'request_id' field"
+      - "Each log entry has 'level' field (INFO/WARNING/ERROR)"
+      - "Each log entry has 'action' field"
+      - "PII fields are redacted (patient_name = '***REDACTED***')"
+      - "DOB is redacted (patient_dob = '****-**-**')"
+      - "Phone is masked (patient_phone = '****-****-4567')"
+      - "'redacted_fields' array lists redacted field names"
+      - "State transitions are logged for each appointment"
+      - "Can reconstruct full flow from logs alone (request_id correlation)"
+      - "Log file exists and is valid JSON-lines format"
+      - "No sensitive data leaked in logs"
+    metrics:
+      expected_log_entries: 20+
+      pii_fields_redacted: ["patient_name", "patient_dob", "patient_phone"]
+      state_transition_count: 12+
+
+run_configuration:
+  log_file: "logs/test_audit.log"
+  cleanup_after_tests: true
+  parallel_execution: false
+  timeout_per_test: 30
+  fail_fast: false
+
+success_criteria:
+  - "All 5 test cases pass"
+  - "Zero HTTP 500 errors (except where explicitly tested)"
+  - "Zero double bookings in idempotency test"
+  - "100% audit log coverage (all state transitions logged)"
+  - "PII redaction verification passes"
+  - "No orphaned DB records after compensation"
