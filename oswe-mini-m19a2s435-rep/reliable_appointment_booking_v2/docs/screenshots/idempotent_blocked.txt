@@ -1,0 +1,1 @@
+Screenshot: Idempotent retry blocked (redacted). Placeholder showing repeated request rejected/returns previous.
