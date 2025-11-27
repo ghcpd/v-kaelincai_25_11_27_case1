@@ -1,0 +1,144 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Appointment Audit Log Schema",
+  "description": "Structured logging schema for appointment booking lifecycle with redacted sensitive data",
+  "type": "object",
+  "required": ["timestamp", "event_type", "appointment_id", "request_id", "status"],
+  "properties": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp of event"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "APPOINTMENT_INIT",
+        "IDEMPOTENCY_CHECK",
+        "DB_RESERVE_START",
+        "DB_RESERVE_SUCCESS",
+        "DB_RESERVE_FAILED",
+        "CALENDAR_SYNC_START",
+        "CALENDAR_SYNC_SUCCESS",
+        "CALENDAR_SYNC_TIMEOUT",
+        "CALENDAR_SYNC_ERROR",
+        "COMPENSATION_TRIGGERED",
+        "COMPENSATION_SUCCESS",
+        "COMPENSATION_FAILED",
+        "FINAL_SUCCESS",
+        "FINAL_FAILURE",
+        "RETRY_ATTEMPT"
+      ],
+      "description": "Lifecycle event in appointment booking"
+    },
+    "appointment_id": {
+      "type": "string",
+      "description": "Server-generated unique appointment identifier"
+    },
+    "request_id": {
+      "type": "string",
+      "description": "Client-provided idempotency key (UUID)"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["INIT", "IN_PROGRESS", "SUCCESS", "FAILURE", "COMPENSATING", "PARTIAL"],
+      "description": "Current appointment state"
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Redacted user identifier (hash prefix only)"
+    },
+    "calendar_slot_id": {
+      "type": "string",
+      "description": "External calendar slot reference"
+    },
+    "message": {
+      "type": "string",
+      "description": "Contextual message"
+    },
+    "duration_ms": {
+      "type": "number",
+      "description": "Operation duration in milliseconds"
+    },
+    "retry_count": {
+      "type": "integer",
+      "description": "Number of retries attempted"
+    },
+    "error_code": {
+      "type": "string",
+      "enum": [
+        "CALENDAR_TIMEOUT",
+        "CALENDAR_INVALID_RESPONSE",
+        "DB_CONFLICT",
+        "DB_ERROR",
+        "DUPLICATE_REQUEST",
+        "INTERNAL_ERROR",
+        "SUCCESS"
+      ],
+      "description": "Standardized error classification"
+    },
+    "db_state": {
+      "type": "object",
+      "description": "Snapshot of DB state (redacted)",
+      "properties": {
+        "appointment_exists": { "type": "boolean" },
+        "slot_reserved": { "type": "boolean" },
+        "reservation_count": { "type": "integer" }
+      }
+    },
+    "calendar_response": {
+      "type": "object",
+      "description": "Snapshot of calendar response (redacted)",
+      "properties": {
+        "http_status": { "type": "integer" },
+        "response_time_ms": { "type": "number" },
+        "error_type": { "type": ["string", "null"] }
+      }
+    },
+    "compensation_action": {
+      "type": "string",
+      "enum": ["DB_ROLLBACK", "SLOT_RELEASE", "NONE"],
+      "description": "Compensation strategy applied"
+    }
+  },
+  "examples": [
+    {
+      "timestamp": "2025-11-27T10:30:00.000Z",
+      "event_type": "APPOINTMENT_INIT",
+      "appointment_id": "apt_550e8400e29b41d4a716",
+      "request_id": "req_6ba7b810550e8400e29b41d4a716",
+      "status": "INIT",
+      "user_id": "usr_abcd...",
+      "message": "New appointment booking initiated",
+      "error_code": "SUCCESS"
+    },
+    {
+      "timestamp": "2025-11-27T10:30:01.500Z",
+      "event_type": "CALENDAR_SYNC_TIMEOUT",
+      "appointment_id": "apt_550e8400e29b41d4a716",
+      "request_id": "req_6ba7b810550e8400e29b41d4a716",
+      "status": "IN_PROGRESS",
+      "user_id": "usr_abcd...",
+      "duration_ms": 5000,
+      "error_code": "CALENDAR_TIMEOUT",
+      "calendar_response": {
+        "http_status": 0,
+        "response_time_ms": 5000,
+        "error_type": "timeout"
+      }
+    },
+    {
+      "timestamp": "2025-11-27T10:30:02.000Z",
+      "event_type": "COMPENSATION_TRIGGERED",
+      "appointment_id": "apt_550e8400e29b41d4a716",
+      "request_id": "req_6ba7b810550e8400e29b41d4a716",
+      "status": "COMPENSATING",
+      "compensation_action": "DB_ROLLBACK",
+      "db_state": {
+        "appointment_exists": false,
+        "slot_reserved": false,
+        "reservation_count": 0
+      }
+    }
+  ]
+}
