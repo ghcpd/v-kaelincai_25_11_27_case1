@@ -1,0 +1,54 @@
+# Five integration test scenarios
+scenarios:
+  - id: normal_success
+    description: Normal booking success where calendar confirms quickly.
+    mode: ''
+    request:
+      client_request_id: 'req_normal_1'
+      slot_id: 'slot_101'
+      patient_name: 'Alice'
+    expect:
+      status_code: 200
+      db_exists: true
+      status: 'SUCCESS'
+  - id: calendar_timeout_no_booking
+    description: Calendar times out, API should return 500 and no booking should be present in DB.
+    mode: 'timeout'
+    request:
+      client_request_id: 'req_timeout_1'
+      slot_id: 'slot_102'
+      patient_name: 'Bob'
+    expect:
+      status_code: 500
+      db_exists: false
+  - id: idempotent_retry_no_double_booking
+    description: Retry the same client_request_id twice; expect no double booking.
+    mode: ''
+    request:
+      client_request_id: 'req_idempotent_success_1'
+      slot_id: 'slot_103'
+      patient_name: 'Carol'
+    expect:
+      status_code: 200
+      db_single_record: true
+  - id: partial_success_triggers_compensation
+    description: Calendar returns malformed or ambiguous response causing compensation -> no booking.
+    mode: 'malformed'
+    request:
+      client_request_id: 'req_partial_1'
+      slot_id: 'slot_104'
+      patient_name: 'Dave'
+    expect:
+      status_code: 500
+      db_exists: false
+  - id: audit_and_reconciliation
+    description: Ensure logs include appointment/request IDs and status for a success case.
+    mode: ''
+    request:
+      client_request_id: 'req_audit_1'
+      slot_id: 'slot_105'
+      patient_name: 'Eve'
+    expect:
+      status_code: 200
+      log_contains: 'appointment_id'
+      log_contains2: 'client_request_id'
