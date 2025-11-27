@@ -1,0 +1,2 @@
+FAILURE screenshot placeholder: UI shows error and no booking.
+{ "screenshot":"failure" }

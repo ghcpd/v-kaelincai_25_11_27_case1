@@ -1,0 +1,61 @@
+# Python artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+pip-wheel-metadata/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.pytest_cache/
+
+
+
+# SQLite DB
+appointments.db
+*.db
+*.sqlite3
+*.db-journal
+
+# Secrets / credentials
+.env
+.env.*
+secrets/
+
+# VS Code / JetBrains
+.vscode/
+.idea/
+*.code-workspace
+*.iml
+
+# OS/IDE files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Misc
+*.bak
+*.swp
+
+# Mac and Windows metadata
+Icon
+
+# End

@@ -1,0 +1,31 @@
+- id: normal_success
+  simulate: none
+  expected_status: 200
+  expected_state: CONFIRMED
+
+- id: calendar_timeout
+  simulate: timeout
+  expected_status: 500
+  expected_state: CANCELLED
+
+- id: idempotency_retry
+  simulate: none
+  retries: 2
+  expected_status: 200
+  expected_state: CONFIRMED
+
+- id: partial_success_compensation
+  simulate: fail
+  expected_status: 500
+  expected_state: CANCELLED
+
+- id: audit_verification
+  simulate: none
+  expected_status: 200
+  expected_state: CONFIRMED
+
+- id: async_in_progress
+  simulate: none
+  prefer_async: true
+  expected_status: 202
+  expected_state: CONFIRMED
