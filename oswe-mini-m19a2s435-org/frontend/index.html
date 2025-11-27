@@ -1,0 +1,104 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Appointment Booking UI</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+      :root { --bg:#f6f8fa; --card:#fff; --accent:#4f46e5; --success:#16a34a; --danger:#ef4444; --muted:#6b7280; }
+      body { font-family: Inter, system-ui, Arial; padding: 2rem; background: var(--bg); color:#0f172a }
+      .container { max-width: 900px; margin: auto; }
+      .card { background: var(--card); border-radius: 12px; padding: 1.25rem; box-shadow: 0 2px 10px rgba(15,23,42,0.04) }
+      h1 { font-size: 1.4rem; margin-bottom: 0.5rem }
+      .form-row { display:flex; gap: 0.5rem; align-items:center; }
+      .form-row label { flex:1; display:flex; gap:0.5rem; align-items:center }
+      input[type='text'] { width:100%; padding:0.5rem; border-radius: 6px; border:1px solid #e6e6ef }
+      select { padding:0.5rem; border-radius:6px }
+      button { padding: 0.5rem 0.9rem; background: var(--accent); color:white; border:none; border-radius:8px }
+      .status { margin-top: 1rem; padding:0.7rem 1rem; border-radius:8px; font-weight:600 }
+      .ok { background: #ecfdf5; color: var(--success) }
+      .err { background: #fff1f2; color: var(--danger) }
+      .pending { background: #f8fafc; color: #7c8ea3 }
+      .log { margin-top:1rem; background:#0b1220; color:#dbeafe; padding:1rem; font-family:monospace; border-radius:6px; max-height: 200px; overflow:auto }
+      .details { font-size:0.9rem; color:var(--muted) }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="card">
+        <h1>Appointment Booking</h1>
+        <p class="details">This UI demonstrates idempotency, async confirm (outbox), timeouts and retries with a simulated calendar service. Request payloads are short-lived and redacted in logs.</p>
+
+        <form id="form">
+          <div class="form-row">
+            <label> User ID: <input id="user_id" value="user-1" placeholder="user id"/></label>
+            <label> Slot: <input id="slot" value="2025-12-01T10:00:00" placeholder="slot"/></label>
+          </div>
+          <div class="form-row" style="margin-top:.6rem">
+            <label> Mode: <select id="mode"><option value="success">success</option><option value="timeout">timeout</option><option value="bad">bad</option></select></label>
+            <label> Async Confirm: <input id="async_confirm" type="checkbox"/></label>
+            <button id="submit">Confirm</button>
+          </div>
+        </form>
+
+        <div id="status" class="status pending">Awaiting action</div>
+
+        <div class="log" id="log"></div>
+      </div>
+
+      <div style="margin-top:1rem;text-align:center;color:#6b7280">You can press the button multiple times to test idempotency and retries.</div>
+    </div>
+
+    <script>
+      const logEl = document.getElementById('log')
+      const statusEl = document.getElementById('status')
+
+      function appendLog(text){
+        const time = new Date().toISOString()
+        logEl.innerText = time + ' - ' + text + '\n' + logEl.innerText
+      }
+
+      document.getElementById('form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        document.getElementById('submit').disabled = true
+        statusEl.className = 'status pending'
+        statusEl.innerText = 'Sending request...'
+        const reqId = 'ui-' + Date.now();
+
+        const body = {
+          client_request_id: reqId,
+          user_id: document.getElementById('user_id').value,
+          slot: document.getElementById('slot').value,
+          async_confirm: document.getElementById('async_confirm').checked,
+          mode: document.getElementById('mode').value
+        }
+        appendLog('Requesting ' + JSON.stringify({client_request_id:reqId, user_id:body.user_id, slot:body.slot}))
+        try{
+          const res = await fetch('/appointments/confirm', {
+            method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body)
+          })
+          const text = await res.text();
+          if(res.status === 200){
+            statusEl.className = 'status ok'
+            statusEl.innerText = 'Success: ' + text
+            appendLog('Success: ' + text)
+          } else if (res.status === 202){
+            statusEl.className = 'status pending'
+            statusEl.innerText = 'In progress: ' + text
+            appendLog('In-progress: ' + text)
+          } else {
+            statusEl.className = 'status err'
+            statusEl.innerText = 'Error ' + res.status + ': ' + text
+            appendLog('Error: ' + text)
+          }
+        } catch(err){
+          statusEl.className = 'status err'
+          statusEl.innerText = 'Network or client error'
+          appendLog('Network error: ' + String(err))
+        } finally{
+          document.getElementById('submit').disabled = false
+        }
+      });
+    </script>
+  </body>
+</html>

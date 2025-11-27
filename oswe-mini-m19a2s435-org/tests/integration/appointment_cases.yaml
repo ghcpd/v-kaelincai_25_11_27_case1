@@ -1,0 +1,62 @@
+- id: normal_success
+  description: "Calendar responds quickly; appointment confirmed and returned success"
+  input:
+    client_request_id: "req-normal-1"
+    user_id: "user-1"
+    slot: "2025-12-01T10:00:00"
+    mode: success
+    async_confirm: false
+  expected:
+    http_status: 200
+    appointment_status: success
+
+- id: calendar_timeout_no_booking
+  description: "Calendar times out; API returns 500 and no booking is persisted"
+  input:
+    client_request_id: "req-timeout-1"
+    user_id: "user-2"
+    slot: "2025-12-01T11:00:00"
+    mode: timeout
+    async_confirm: false
+  expected:
+    http_status: 500
+    appointment_exists: false
+
+- id: idempotent_retry_no_double_book
+  description: "Same request_id retry should not create duplicate bookings"
+  input:
+    client_request_id: "req-idemp-1"
+    user_id: "user-3"
+    slot: "2025-12-01T12:00:00"
+    mode: success
+    async_confirm: false
+  expected:
+    first_http_status: 200
+    second_http_status: 200
+    accept_no_double_book: true
+
+- id: partial_success_triggers_compensation
+  description: "Async flow: calendar failing after appointment persisted triggers outbox attempts and compensation release slot"
+  input:
+    client_request_id: "req-async-1"
+    user_id: "user-4"
+    slot: "2025-12-01T13:00:00"
+    mode: bad
+    async_confirm: true
+  expected:
+    http_status: 202
+    after_retries:
+      appointment_status: failed
+      booking_removed: true
+
+- id: audit_verification
+  description: "Audit logs have structured entries with request_id and appointment_id"
+  input:
+    client_request_id: "req-audit-1"
+    user_id: "user-5"
+    slot: "2025-12-01T14:00:00"
+    mode: success
+    async_confirm: false
+  expected:
+    http_status: 200
+    audit_events_min: 3

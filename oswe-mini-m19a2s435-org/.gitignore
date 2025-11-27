@@ -1,0 +1,54 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+.env/
+env/
+venv/
+
+# Packaging / build
+build/
+dist/
+site/
+.eggs/
+*.egg-info/
+pip-wheel-metadata/
+
+# Testing / coverage
+.pytest_cache/
+.tox/
+.coverage
+.coverage.*
+.cache/
+htmlcov/
+
+# Databases / local state
+*.db
+*.sqlite
+*.sqlite3
+
+
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS artifacts
+.DS_Store
+Thumbs.db
+$RECYCLE.BIN/
+
+# Docker / runtime
+*.pid
+
+# Frontend (if added later)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
