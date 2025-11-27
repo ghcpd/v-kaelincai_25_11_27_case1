@@ -1,0 +1,2 @@
+IN-PROGRESS screenshot placeholder: UI shows "In Progress" state.
+{ "screenshot":"in_progress" }

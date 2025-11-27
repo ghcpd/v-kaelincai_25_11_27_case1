@@ -1,0 +1,2 @@
+SUCCESS screenshot placeholder: Appointment confirmed UI.
+{ "screenshot":"success" }

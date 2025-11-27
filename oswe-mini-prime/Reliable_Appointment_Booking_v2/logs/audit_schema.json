@@ -1,0 +1,16 @@
+{
+  "description": "Audit log schema for appointment requests",
+  "fields": [
+    {"name":"timestamp", "type":"string", "format":"ISO8601"},
+    {"name":"event", "type":"string", "description":"Event name (e.g., appointment_created, calendar_exception, appointment_confirmed)"},
+    {"name":"appointment_id", "type":"string"},
+    {"name":"request_id", "type":"string"},
+    {"name":"idempotency_key", "type":"string"},
+    {"name":"state", "type":"string"},
+    {"name":"message", "type":"string"}
+  ],
+  "redact": ["client_id"],
+  "examples": [
+    {"timestamp":"2025-11-27T12:34:56Z","event":"appointment_created","appointment_id":"uuid","request_id":"r1","idempotency_key":"k1","state":"IN_PROGRESS","message":"..."}
+  ]
+}
