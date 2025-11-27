@@ -1,0 +1,35 @@
+• Role
+Backend & QA lead for Appointment API HTTP 500 defects (external calendar timeout/exception).
+
+• Title
+Reliable_Appointment_Booking_v2 – Resilience for Appointment 500s
+
+• Description
+Diagnose end-to-end intermittent 500s on “Confirm Appointment.” Trace controllers → queues/tasks → calendar adapter to locate crash points: external sync timeouts, uncaught exceptions, missing idempotency/compensation. Design a fix so success is returned only after slot reservation + calendar confirmation; otherwise return a deterministic failure or “in-progress.” Implement client request ID idempotency, sensible timeouts/backoff, compensation, and audit hooks. Use Python 3.x with a simulated calendar service.
+
+• AI Output Requirements
+o Map the appointment lifecycle (init → in-progress → success/failure) and mark crash points (uncaught exceptions, timeout propagation, missing idempotency).
+o Provide root-cause evidence: stack traces/log snippets, state snapshots (request ID, calendar response, DB state).
+o Recommend changes: idempotency key, retry+backoff, circuit breaker/timeouts, transactional outbox or saga compensation, unified state machine.
+o Define ≥5 repeatable integration tests: normal success; calendar timeout -> 500 with no booking; same idempotency key retry avoids double booking; partial success triggers compensation; audit/reconciliation verification.
+o Specify structured logging schema with unique appointment/request ID, redacting sensitive fields.
+o Outline a single-command test harness running all scenarios and reporting pass/fail plus key metrics (success rate, retry counts, idempotency assertions).
+
+• Deliverables
+o src/ — fixed source (controllers, adapters, state machine, idempotency layer, retry policies).
+o frontend/ — a simple appointment booking UI page showing init/in-progress/success/failure states, wired to the mock API.
+o docs/screenshots/ — UI screenshots (redacted) covering success, failure, in-progress, idempotent retry blocked, and compensation flows.
+o docs/root_cause_analysis.md — diagnosis (call flows, stacks, failure tables).
+o docs/remediation_plan.md — architecture changes, task breakdown, rollout/rollback.
+o tests/integration/appointment_cases.yaml — five test scenarios with inputs/expected outcomes.
+o logs/audit_schema.json — structured log schema and appointment/request ID examples.
+o scripts/run_appointment_suite.sh — single-command runner and expected output format.
+o requirements.txt — dependencies for tests/tooling.
+o setup.sh — environment bootstrap.
+o run_tests.sh — wrapper calling scripts/run_appointment_suite.sh.
+o mocks/mock_calendar_service.py — simulated calendar with controllable delays/errors.
+o tests/run_suite.py — extend to execute the five cases.
+
+• Constraints
+o Python 3.x; use only simulated services.
+o Idempotency and compensation must be testable and observable (structured logs).

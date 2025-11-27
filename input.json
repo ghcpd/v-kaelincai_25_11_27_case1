@@ -1,0 +1,27 @@
+{
+  "category": "Bug-related",
+  "subCategory": "Crash/Exception",
+  "projectContext": {
+    "name": "Outpatient Appointment System",
+    "description": "When users submit appointment requests, the API intermittently returns HTTP 500 (e.g., third-party calendar service timeouts or malformed responses). Exceptions bubble up directly. In some cases the appointment is written to the local DB but calendar sync fails; the frontend only sees failure, and repeated submissions can reserve multiple slots.",
+    "currentVersion": "Lacks idempotency, compensation, and unified state management for calendar sync exceptions; errors are not standardized.",
+    "targetVersion": "Reliable_Appointment_Booking_v2 (more resilient to runtime/API failures, clear states, and idempotent retries)"
+  },
+  "issueStatement": "Appointment confirmations crash (HTTP 500) due to external calendar sync exceptions/timeouts. Exceptions are uncaught; without compensation or idempotency, retries may double-book a slot. Users may see failure while the slot is actually reserved, causing inconsistent state.",
+  "businessGoals": [
+    "Eliminate false negatives/positives: on failure responses, guarantee no slot is reserved; if reserved, return success or mark \"in-progress\" and confirm later.",
+    "Introduce idempotent handling keyed by a unique client request ID to prevent double booking.",
+    "Standardize error codes and emit structured logs to speed troubleshooting and reconciliation."
+  ],
+  "technicalConstraints": {
+    "language": "Python 3.x",
+    "stack": [
+      "Calendar sync via HTTP/gRPC can timeout or return invalid data.",
+      "Use a simulated calendar service for analysis/fixes; do not call the real third-party."
+    ]
+  },
+  "nonFunctional": [
+    "Design 5 integration test scenarios: normal success; calendar timeout -> 500 with no booking; idempotent retry without double booking; partial success triggers compensation; audit verification. Runnable via a single script.",
+    "Emit structured logs at each stage with a unique appointment/request ID (redacted sensitive data) for reconciliation."
+  ]
+}
